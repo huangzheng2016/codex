@@ -1,0 +1,87 @@
+name: codex-sec-release-build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-release:
+    name: Build codex-sec release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: codex-rs
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Install Linux bwrap build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libcap-dev
+
+      - uses: dtolnay/rust-toolchain@a0b273b48ed29de4470960879e8381ff45632f26 # 1.93.0
+
+      - name: Cargo build
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --release --timings --bin codex-sec
+
+      - name: Stage release asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          install -m 755 target/release/codex-sec dist/codex-sec-linux-x86_64
+
+      - name: Upload Cargo timings
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        with:
+          name: cargo-timings-codex-sec-release
+          path: codex-rs/target/**/cargo-timings/cargo-timing.html
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Publish rolling latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_tag="codex-sec-latest"
+          release_title="codex-sec latest"
+          release_notes="$(cat <<EOF
+          Rolling latest codex-sec release for \`${GITHUB_REPOSITORY}\`.
+
+          Commit: \`${GITHUB_SHA}\`
+          Branch: \`${GITHUB_REF_NAME}\`
+          Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          EOF
+          )"
+
+          if gh release view "${release_tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release delete "${release_tag}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --yes \
+              --cleanup-tag
+          fi
+
+          gh release create "${release_tag}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title "${release_title}" \
+            --notes "${release_notes}" \
+            --latest \
+            "dist/codex-sec-linux-x86_64#codex-sec-linux-x86_64"
