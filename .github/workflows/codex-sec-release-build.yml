@@ -14,7 +14,11 @@ jobs:
   build-release:
     name: Build codex-sec release (${{ matrix.label }})
     runs-on: ${{ matrix.runs_on }}
-    timeout-minutes: 60
+    timeout-minutes: 120
+    env:
+      CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+      CARGO_NET_RETRY: "10"
+      CARGO_HTTP_TIMEOUT: "600"
     strategy:
       fail-fast: false
       matrix:
@@ -62,6 +66,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Prefer HTTP/1.1 for git on macOS
+        if: ${{ runner.os == 'macOS' }}
+        shell: bash
+        run: git config --global http.version HTTP/1.1
+
       - name: Cargo build
         shell: bash
         run: |
@@ -79,7 +88,7 @@ jobs:
           fi
 
       - name: Upload Cargo timings
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cargo-timings-codex-sec-release-${{ matrix.label }}
           path: codex-rs/target/**/cargo-timings/cargo-timing.html
@@ -87,7 +96,7 @@ jobs:
           retention-days: 7
 
       - name: Upload release asset
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: codex-sec-release-${{ matrix.label }}
           path: codex-rs/dist/${{ matrix.asset_name }}
@@ -105,7 +114,7 @@ jobs:
       contents: write
     steps:
       - name: Download successful release assets
-        uses: actions/download-artifact@f4f86e3225037d0ea58fcb8b769f40b55f784b32 # v6
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: codex-sec-release-*
           path: dist
