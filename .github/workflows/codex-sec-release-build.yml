@@ -12,11 +12,37 @@ concurrency:
 
 jobs:
   build-release:
-    name: Build codex-sec release
-    runs-on: ubuntu-24.04
+    name: Build codex-sec release (${{ matrix.label }})
+    runs-on: ${{ matrix.runs_on }}
     timeout-minutes: 60
-    permissions:
-      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: linux-x86_64
+            runs_on: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            asset_name: codex-sec-linux-x86_64
+            bin_name: codex-sec
+            install_linux_deps: true
+          - label: windows-x86_64
+            runs_on: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset_name: codex-sec-windows-x86_64.exe
+            bin_name: codex-sec.exe
+            install_linux_deps: false
+          - label: macos-x86_64
+            runs_on: macos-15-intel
+            target: x86_64-apple-darwin
+            asset_name: codex-sec-macos-x86_64
+            bin_name: codex-sec
+            install_linux_deps: false
+          - label: macos-aarch64
+            runs_on: macos-15
+            target: aarch64-apple-darwin
+            asset_name: codex-sec-macos-aarch64
+            bin_name: codex-sec
+            install_linux_deps: false
     defaults:
       run:
         working-directory: codex-rs
@@ -25,6 +51,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Install Linux bwrap build dependencies
+        if: ${{ matrix.install_linux_deps }}
         shell: bash
         run: |
           set -euo pipefail
@@ -32,27 +59,57 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libcap-dev
 
       - uses: dtolnay/rust-toolchain@a0b273b48ed29de4470960879e8381ff45632f26 # 1.93.0
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Cargo build
         shell: bash
         run: |
           set -euo pipefail
-          cargo build --release --timings --bin codex-sec
+          cargo build --release --timings --bin codex-sec --target ${{ matrix.target }}
 
       - name: Stage release asset
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          install -m 755 target/release/codex-sec dist/codex-sec-linux-x86_64
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin_name }}" "dist/${{ matrix.asset_name }}"
+          if [[ "${{ runner.os }}" != "Windows" ]]; then
+            chmod 755 "dist/${{ matrix.asset_name }}"
+          fi
 
       - name: Upload Cargo timings
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
-          name: cargo-timings-codex-sec-release
+          name: cargo-timings-codex-sec-release-${{ matrix.label }}
           path: codex-rs/target/**/cargo-timings/cargo-timing.html
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Upload release asset
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        with:
+          name: codex-sec-release-${{ matrix.label }}
+          path: codex-rs/dist/${{ matrix.asset_name }}
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-release:
+    name: Publish rolling latest release
+    if: ${{ always() }}
+    needs:
+      - build-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Download successful release assets
+        uses: actions/download-artifact@f4f86e3225037d0ea58fcb8b769f40b55f784b32 # v6
+        with:
+          pattern: codex-sec-release-*
+          path: dist
+          merge-multiple: true
 
       - name: Publish rolling latest release
         env:
@@ -68,8 +125,18 @@ jobs:
           Commit: \`${GITHUB_SHA}\`
           Branch: \`${GITHUB_REF_NAME}\`
           Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          Included assets:
+          $(find dist -maxdepth 1 -type f -printf -- '- `%f`\n' | sort)
           EOF
           )"
+
+          shopt -s nullglob
+          assets=(dist/*)
+          if [[ ${#assets[@]} -eq 0 ]]; then
+            echo "No successful codex-sec artifacts were produced; skipping release publish." >&2
+            exit 1
+          fi
 
           if gh release view "${release_tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             gh release delete "${release_tag}" \
@@ -84,4 +151,4 @@ jobs:
             --title "${release_title}" \
             --notes "${release_notes}" \
             --latest \
-            "dist/codex-sec-linux-x86_64#codex-sec-linux-x86_64"
+            "${assets[@]}"
