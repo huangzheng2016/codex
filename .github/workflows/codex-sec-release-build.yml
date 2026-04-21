@@ -14,7 +14,7 @@ jobs:
   build-release:
     name: Build codex-sec release (${{ matrix.label }})
     runs-on: ${{ matrix.runs_on }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       CARGO_NET_GIT_FETCH_WITH_CLI: "true"
       CARGO_NET_RETRY: "10"
