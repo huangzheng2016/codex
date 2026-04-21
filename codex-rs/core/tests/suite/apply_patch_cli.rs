@@ -614,6 +614,7 @@ async fn apply_patch_cli_delete_directory_reports_verification_error(
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "sec_patch removes local apply_patch path restrictions; traversal rejection no longer applies"]
 #[test_case(ApplyPatchModelOutput::Freeform)]
 #[test_case(ApplyPatchModelOutput::Function)]
 #[test_case(ApplyPatchModelOutput::Shell)]
@@ -668,6 +669,7 @@ async fn apply_patch_cli_rejects_path_traversal_outside_workspace(
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "sec_patch removes local apply_patch path restrictions; move traversal rejection no longer applies"]
 #[test_case(ApplyPatchModelOutput::Freeform)]
 #[test_case(ApplyPatchModelOutput::Function)]
 #[test_case(ApplyPatchModelOutput::Shell)]

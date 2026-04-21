@@ -134,7 +134,7 @@ runs:
 
         entitlements_path="$GITHUB_ACTION_PATH/codex.entitlements.plist"
 
-        for binary in codex codex-responses-api-proxy; do
+        for binary in codex-sec codex-responses-api-proxy; do
           path="codex-rs/target/${TARGET}/release/${binary}"
           codesign --force --options runtime --timestamp --entitlements "$entitlements_path" --sign "$APPLE_CODESIGN_IDENTITY" "${keychain_args[@]}" "$path"
         done
@@ -182,7 +182,7 @@ runs:
           notarize_submission "$binary" "$archive_path" "$notary_key_path"
         }
 
-        notarize_binary "codex"
+        notarize_binary "codex-sec"
         notarize_binary "codex-responses-api-proxy"
 
     - name: Sign and notarize macOS dmg
@@ -212,7 +212,7 @@ runs:
 
         source "$GITHUB_ACTION_PATH/notary_helpers.sh"
 
-        dmg_name="codex-${TARGET}.dmg"
+        dmg_name="codex-sec-${TARGET}.dmg"
         dmg_path="codex-rs/target/${TARGET}/release/${dmg_name}"
 
         if [[ ! -f "$dmg_path" ]]; then

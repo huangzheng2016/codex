@@ -220,7 +220,7 @@ jobs:
         shell: bash
         run: |
           echo "CARGO_PROFILE_RELEASE_LTO: ${CARGO_PROFILE_RELEASE_LTO}"
-          cargo build --target ${{ matrix.target }} --release --timings --bin codex --bin codex-responses-api-proxy
+          cargo build --target ${{ matrix.target }} --release --timings --bin codex-sec --bin codex-responses-api-proxy
 
       - name: Upload Cargo timings
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
@@ -259,12 +259,12 @@ jobs:
           release_dir="target/${target}/release"
           dmg_root="${RUNNER_TEMP}/codex-dmg-root"
           volname="Codex (${target})"
-          dmg_path="${release_dir}/codex-${target}.dmg"
+          dmg_path="${release_dir}/codex-sec-${target}.dmg"
 
           # The previous "MacOS code signing (binaries)" step signs + notarizes the
           # built artifacts in `${release_dir}`. This step packages *those same*
           # signed binaries into a dmg.
-          codex_binary_path="${release_dir}/codex"
+          codex_binary_path="${release_dir}/codex-sec"
           proxy_binary_path="${release_dir}/codex-responses-api-proxy"
 
           rm -rf "$dmg_root"
@@ -279,7 +279,7 @@ jobs:
             exit 1
           fi
 
-          ditto "$codex_binary_path" "${dmg_root}/codex"
+          ditto "$codex_binary_path" "${dmg_root}/codex-sec"
           ditto "$proxy_binary_path" "${dmg_root}/codex-responses-api-proxy"
 
           rm -f "$dmg_path"
@@ -314,16 +314,16 @@ jobs:
           dest="dist/${{ matrix.target }}"
           mkdir -p "$dest"
 
-          cp target/${{ matrix.target }}/release/codex "$dest/codex-${{ matrix.target }}"
+          cp target/${{ matrix.target }}/release/codex-sec "$dest/codex-sec-${{ matrix.target }}"
           cp target/${{ matrix.target }}/release/codex-responses-api-proxy "$dest/codex-responses-api-proxy-${{ matrix.target }}"
 
           if [[ "${{ matrix.target }}" == *linux* ]]; then
-            cp target/${{ matrix.target }}/release/codex.sigstore "$dest/codex-${{ matrix.target }}.sigstore"
+            cp target/${{ matrix.target }}/release/codex-sec.sigstore "$dest/codex-sec-${{ matrix.target }}.sigstore"
             cp target/${{ matrix.target }}/release/codex-responses-api-proxy.sigstore "$dest/codex-responses-api-proxy-${{ matrix.target }}.sigstore"
           fi
 
           if [[ "${{ matrix.target }}" == *apple-darwin ]]; then
-            cp target/${{ matrix.target }}/release/codex-${{ matrix.target }}.dmg "$dest/codex-${{ matrix.target }}.dmg"
+            cp target/${{ matrix.target }}/release/codex-sec-${{ matrix.target }}.dmg "$dest/codex-sec-${{ matrix.target }}.dmg"
           fi
 
       - name: Compress artifacts
@@ -336,8 +336,8 @@ jobs:
           # For compatibility with environments that lack the `zstd` tool we
           # additionally create a `.tar.gz` alongside every binary we publish.
           # The end result is:
-          #   codex-<target>.zst          (existing)
-          #   codex-<target>.tar.gz       (new)
+          #   codex-sec-<target>.zst      (existing)
+          #   codex-sec-<target>.tar.gz   (new)
 
           # 1. Produce a .tar.gz for every file in the directory *before* we
           #    run `zstd --rm`, because that flag deletes the original files.
@@ -684,7 +684,7 @@ jobs:
           version: ${{ needs.release.outputs.version }}
           release-tag: ${{ needs.release.outputs.tag }}
           fork-user: openai-oss-forks
-          installers-regex: '^codex-(?:x86_64|aarch64)-pc-windows-msvc\.exe\.zip$'
+          installers-regex: '^codex-sec-(?:x86_64|aarch64)-pc-windows-msvc\.exe\.zip$'
           token: ${{ secrets.WINGET_PUBLISH_PAT }}
 
   update-branch:

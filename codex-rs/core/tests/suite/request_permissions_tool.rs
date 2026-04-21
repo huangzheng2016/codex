@@ -304,6 +304,7 @@ async fn approved_folder_write_request_permissions_unblocks_later_exec_without_s
 
 #[tokio::test(flavor = "current_thread")]
 #[cfg(target_os = "macos")]
+#[ignore = "sec_patch removes local apply_patch approval prompts, so request_permissions is no longer required for this path"]
 async fn approved_folder_write_request_permissions_unblocks_later_apply_patch_without_prompt()
 -> Result<()> {
     skip_if_no_network!(Ok(()));

@@ -40,14 +40,14 @@ jobs:
           - runner: windows-x64
             target: x86_64-pc-windows-msvc
             bundle: primary
-            build_args: --bin codex --bin codex-responses-api-proxy
+            build_args: --bin codex-sec --bin codex-responses-api-proxy
             runs_on:
               group: codex-runners
               labels: codex-windows-x64
           - runner: windows-arm64
             target: aarch64-pc-windows-msvc
             bundle: primary
-            build_args: --bin codex --bin codex-responses-api-proxy
+            build_args: --bin codex-sec --bin codex-responses-api-proxy
             runs_on:
               group: codex-runners
               labels: codex-windows-arm64
@@ -104,7 +104,7 @@ jobs:
           output_dir="target/${{ matrix.target }}/release/staged-${{ matrix.bundle }}"
           mkdir -p "$output_dir"
           if [[ "${{ matrix.bundle }}" == "primary" ]]; then
-            cp target/${{ matrix.target }}/release/codex.exe "$output_dir/codex.exe"
+            cp target/${{ matrix.target }}/release/codex-sec.exe "$output_dir/codex-sec.exe"
             cp target/${{ matrix.target }}/release/codex-responses-api-proxy.exe "$output_dir/codex-responses-api-proxy.exe"
           else
             cp target/${{ matrix.target }}/release/codex-windows-sandbox-setup.exe "$output_dir/codex-windows-sandbox-setup.exe"
@@ -165,7 +165,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ls -lh target/${{ matrix.target }}/release/codex.exe
+          ls -lh target/${{ matrix.target }}/release/codex-sec.exe
           ls -lh target/${{ matrix.target }}/release/codex-responses-api-proxy.exe
           ls -lh target/${{ matrix.target }}/release/codex-windows-sandbox-setup.exe
           ls -lh target/${{ matrix.target }}/release/codex-command-runner.exe
@@ -187,7 +187,7 @@ jobs:
           dest="dist/${{ matrix.target }}"
           mkdir -p "$dest"
 
-          cp target/${{ matrix.target }}/release/codex.exe "$dest/codex-${{ matrix.target }}.exe"
+          cp target/${{ matrix.target }}/release/codex-sec.exe "$dest/codex-sec-${{ matrix.target }}.exe"
           cp target/${{ matrix.target }}/release/codex-responses-api-proxy.exe "$dest/codex-responses-api-proxy-${{ matrix.target }}.exe"
           cp target/${{ matrix.target }}/release/codex-windows-sandbox-setup.exe "$dest/codex-windows-sandbox-setup-${{ matrix.target }}.exe"
           cp target/${{ matrix.target }}/release/codex-command-runner.exe "$dest/codex-command-runner-${{ matrix.target }}.exe"
@@ -206,9 +206,9 @@ jobs:
           # For compatibility with environments that lack the `zstd` tool we
           # additionally create a `.tar.gz` and `.zip` for every Windows binary.
           # The end result is:
-          #   codex-<target>.zst
-          #   codex-<target>.tar.gz
-          #   codex-<target>.zip
+          #   codex-sec-<target>.zst
+          #   codex-sec-<target>.tar.gz
+          #   codex-sec-<target>.zip
           for f in "$dest"/*; do
             base="$(basename "$f")"
             # Skip files that are already archives (shouldn't happen, but be
@@ -228,9 +228,10 @@ jobs:
             # Create zip archive for Windows binaries.
             # Must run from inside the dest dir so 7z won't embed the
             # directory path inside the zip.
-            if [[ "$base" == "codex-${{ matrix.target }}.exe" ]]; then
-              # Bundle the sandbox helper binaries into the main codex zip so
-              # WinGet installs include the required helpers next to codex.exe.
+            if [[ "$base" == "codex-sec-${{ matrix.target }}.exe" ]]; then
+              # Bundle the sandbox helper binaries into the main codex-sec zip
+              # so WinGet installs include the required helpers next to
+              # codex-sec.exe.
               # Fall back to the single-binary zip if the helpers are missing
               # to avoid breaking releases.
               bundle_dir="$(mktemp -d)"

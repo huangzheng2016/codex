@@ -29,7 +29,7 @@ use crate::state::ReaderEvent;
 #[command(author = "Codex", version, about = "Minimal app-server client")]
 struct Cli {
     /// Path to the `codex` CLI binary.
-    #[arg(long, default_value = "codex")]
+    #[arg(long, default_value = "codex-sec")]
     codex_bin: String,
 
     /// Forwarded to the `codex` CLI as `--config key=value`. Repeatable.
